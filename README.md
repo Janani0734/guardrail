@@ -1,4 +1,4 @@
-# GuardRail — Runtime Approval Gateway for AI Agents
+# GuardRail - Runtime Approval Gateway for AI Agents
 
 [![CI](https://github.com/Janani0734/guardrail/actions/workflows/ci.yml/badge.svg)](https://github.com/Janani0734/guardrail/actions/workflows/ci.yml) ![Tests](https://img.shields.io/badge/tests-96%20backend%20%2B%2022%20frontend-brightgreen) ![Python](https://img.shields.io/badge/python-3.11%2B-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688) ![Next.js](https://img.shields.io/badge/Next.js-14-black) ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
@@ -142,7 +142,7 @@ GuardRail/
 ├─ backend/   app/{core,models,schemas,repositories,services,routers,workers,utils}, alembic/, scripts/seed.py, tests/
 └─ frontend/  src/{app,components,hooks,lib,types,styles}
 ```
-Documentation: [ARCHITECTURE.md](ARCHITECTURE.md) · [API.md](API.md) · [INTERVIEW_GUIDE.md](INTERVIEW_GUIDE.md) · [CHANGELOG.md](CHANGELOG.md)
+Documentation: [ARCHITECTURE.md](ARCHITECTURE.md) · [API.md](API.md) · [CHANGELOG.md](CHANGELOG.md)
 
 ## Known limitations
 - Single approval step (no quorum or escalation chains)
@@ -153,7 +153,6 @@ Documentation: [ARCHITECTURE.md](ARCHITECTURE.md) · [API.md](API.md) · [INTERV
 - No email invitations: admins create members with a temporary password
 - Secret redaction is pattern/key-name based, so an unlabelled arbitrary secret can slip through
 
-Full discussion in [INTERVIEW_GUIDE.md](INTERVIEW_GUIDE.md).
 
 ## License
 MIT, see [LICENSE](LICENSE).
@@ -163,6 +162,8 @@ MIT, see [LICENSE](LICENSE).
 |---|---|
 | `connection refused` on 5432/6379 | `docker compose up -d`, then `docker compose ps` (wait for *healthy*) |
 | Port 5432 or 6379 already in use | Stop the local Postgres/Redis, or change the host port in `docker-compose.yml` and your `.env` URLs |
+| `port is already allocated` for 6379 when starting Docker | Another Redis (for example from a different project) holds the port. Find it with `docker ps`, stop it (`docker stop <name>`), or change the host port in `docker-compose.yml` (e.g. `"6382:6379"`; the containers still talk to each other on 6379) |
+| Backend logs `expiry worker cannot reach redis` in Docker | The Redis container is not on the compose network (usually after a failed start). Run `docker compose --profile full up -d --force-recreate redis` then `docker compose --profile full restart backend` |
 | `alembic upgrade head` fails to connect | Check `DATABASE_URL` in `backend/.env` (must use the `postgresql+asyncpg://` scheme) |
 | Dashboard shows “Cannot reach the GuardRail API” | Backend not running, or `BACKEND_URL` in `frontend/.env.local` is wrong; restart `npm run dev` after editing env |
 | Seed says “already exists” | `alembic downgrade base && alembic upgrade head`, then seed again (audit rows are append-only, so a reset recreates the schema) |

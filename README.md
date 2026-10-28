@@ -1,4 +1,4 @@
-# GuardRail — Runtime Approval Gateway for AI Agents
+# GuardRail - Runtime Approval Gateway for AI Agents
 
 ![Tests](https://img.shields.io/badge/tests-96%20passing-brightgreen) ![Python](https://img.shields.io/badge/python-3.11%2B-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688) ![Next.js](https://img.shields.io/badge/Next.js-14-black) ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 

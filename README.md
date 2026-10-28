@@ -1,4 +1,4 @@
-# GuardRail - Runtime Approval Gateway for AI Agents
+# GuardRail — Runtime Approval Gateway for AI Agents
 
 ![Tests](https://img.shields.io/badge/tests-96%20passing-brightgreen) ![Python](https://img.shields.io/badge/python-3.11%2B-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688) ![Next.js](https://img.shields.io/badge/Next.js-14-black) ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
@@ -75,6 +75,14 @@ npm install
 npm run dev                                               # http://localhost:3000
 ```
 
+**Windows (Command Prompt)** — use these instead of the `source` and `cp` lines above:
+```bat
+python -m venv .venv
+.venv\Scripts\activate
+copy .env.example .env
+```
+(Frontend: `copy .env.example .env.local`.)
+
 API docs (Swagger): http://localhost:8000/docs · Health: http://localhost:8000/health
 
 ### Everything in Docker
@@ -95,6 +103,8 @@ TEST_DATABASE_URL=postgresql+asyncpg://guardrail:guardrail@localhost:5432/guardr
 Frontend: `npm run typecheck` and `npm run build`.
 
 ## Demo credentials (local use only)
+> ⚠️ These credentials and API keys are for local development only. Never use them in production; change all secrets before deploying.
+
 | Role | Email | Password |
 |------|-------|----------|
 | ADMIN | admin@guardrail.demo | `Demo@12345!` |
@@ -130,7 +140,7 @@ GuardRail/
 ├─ backend/   app/{core,models,schemas,repositories,services,routers,workers,utils}, alembic/, scripts/seed.py, tests/
 └─ frontend/  src/{app,components,hooks,lib,types,styles}
 ```
-Documentation: [ARCHITECTURE.md](ARCHITECTURE.md) · [API.md](API.md) · [INTERVIEW_GUIDE.md](INTERVIEW_GUIDE.md) · [CHANGELOG.md](CHANGELOG.md)
+Documentation: [ARCHITECTURE.md](ARCHITECTURE.md) · [API.md](API.md) · [CHANGELOG.md](CHANGELOG.md)
 
 ## Known limitations
 - Single approval step (no quorum or escalation chains)
@@ -141,7 +151,6 @@ Documentation: [ARCHITECTURE.md](ARCHITECTURE.md) · [API.md](API.md) · [INTERV
 - No email invitations: admins create members with a temporary password
 - Secret redaction is pattern/key-name based, so an unlabelled arbitrary secret can slip through
 
-Full discussion in [INTERVIEW_GUIDE.md](INTERVIEW_GUIDE.md).
 
 ## License
 MIT, see [LICENSE](LICENSE).

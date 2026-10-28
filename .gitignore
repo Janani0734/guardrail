@@ -1,0 +1,15 @@
+node_modules/
+.next/
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+.env.local
+dist/
+build/
+.pytest_cache/
+*.tsbuildinfo
+next-env.d.ts
+.DS_Store
+*.rdb

@@ -1,6 +1,6 @@
-# GuardRail - Runtime Approval Gateway for AI Agents
+# GuardRail — Runtime Approval Gateway for AI Agents
 
-![Tests](https://img.shields.io/badge/tests-96%20passing-brightgreen) ![Python](https://img.shields.io/badge/python-3.11%2B-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688) ![Next.js](https://img.shields.io/badge/Next.js-14-black) ![License](https://img.shields.io/badge/license-MIT-lightgrey)
+[![CI](https://github.com/Janani0734/guardrail/actions/workflows/ci.yml/badge.svg)](https://github.com/Janani0734/guardrail/actions/workflows/ci.yml) ![Tests](https://img.shields.io/badge/tests-96%20backend%20%2B%2022%20frontend-brightgreen) ![Python](https://img.shields.io/badge/python-3.11%2B-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688) ![Next.js](https://img.shields.io/badge/Next.js-14-black) ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
 ▶️ **[Watch the demo video](https://drive.google.com/file/d/1zVAl44yz5jg2VCouynGCHylcFmeQynmO/view?usp=sharing)**
 
@@ -102,7 +102,7 @@ pytest                      # 96 tests, hermetic: SQLite + fakeredis, ~1 min
 docker compose exec postgres psql -U guardrail -c "CREATE DATABASE guardrail_test"
 TEST_DATABASE_URL=postgresql+asyncpg://guardrail:guardrail@localhost:5432/guardrail_test pytest
 ```
-Frontend: `npm run typecheck` and `npm run build`.
+Frontend (Vitest + React Testing Library, 22 tests): `npm test`, plus `npm run typecheck` and `npm run build`.
 
 ## Demo credentials (local use only)
 > ⚠️ These credentials and API keys are for local development only. Never use them in production; change all secrets before deploying.

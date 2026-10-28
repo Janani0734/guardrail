@@ -1,6 +1,8 @@
-# GuardRail — Runtime Approval Gateway for AI Agents
+# GuardRail - Runtime Approval Gateway for AI Agents
 
 ![Tests](https://img.shields.io/badge/tests-96%20passing-brightgreen) ![Python](https://img.shields.io/badge/python-3.11%2B-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688) ![Next.js](https://img.shields.io/badge/Next.js-14-black) ![License](https://img.shields.io/badge/license-MIT-lightgrey)
+
+▶️ **[Watch the demo video](https://drive.google.com/file/d/1zVAl44yz5jg2VCouynGCHylcFmeQynmO/view?usp=sharing)**
 
 GuardRail sits between an AI agent and the action it wants to perform. For every request it answers **ALLOW**, **BLOCK** or **REQUIRE_APPROVAL**; risky actions wait in a dashboard queue for a human, expire if nobody answers, and every decision lands in a tamper-evident audit log.
 
@@ -140,7 +142,7 @@ GuardRail/
 ├─ backend/   app/{core,models,schemas,repositories,services,routers,workers,utils}, alembic/, scripts/seed.py, tests/
 └─ frontend/  src/{app,components,hooks,lib,types,styles}
 ```
-Documentation: [ARCHITECTURE.md](ARCHITECTURE.md) · [API.md](API.md) · [CHANGELOG.md](CHANGELOG.md)
+Documentation: [ARCHITECTURE.md](ARCHITECTURE.md) · [API.md](API.md) · [INTERVIEW_GUIDE.md](INTERVIEW_GUIDE.md) · [CHANGELOG.md](CHANGELOG.md)
 
 ## Known limitations
 - Single approval step (no quorum or escalation chains)
@@ -151,6 +153,7 @@ Documentation: [ARCHITECTURE.md](ARCHITECTURE.md) · [API.md](API.md) · [CHANGE
 - No email invitations: admins create members with a temporary password
 - Secret redaction is pattern/key-name based, so an unlabelled arbitrary secret can slip through
 
+Full discussion in [INTERVIEW_GUIDE.md](INTERVIEW_GUIDE.md).
 
 ## License
 MIT, see [LICENSE](LICENSE).

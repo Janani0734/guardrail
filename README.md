@@ -1,4 +1,4 @@
-# GuardRail — Runtime Approval Gateway for AI Agents
+# GuardRail - Runtime Approval Gateway for AI Agents
 
 [![CI](https://github.com/Janani0734/guardrail/actions/workflows/ci.yml/badge.svg)](https://github.com/Janani0734/guardrail/actions/workflows/ci.yml) ![Tests](https://img.shields.io/badge/tests-111%20backend%20%2B%2022%20frontend-brightgreen) ![Python](https://img.shields.io/badge/python-3.11%2B-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688) ![Next.js](https://img.shields.io/badge/Next.js-14-black) ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
@@ -162,7 +162,7 @@ GuardRail/
 ├─ backend/   app/{core,models,schemas,repositories,services,routers,workers,utils}, executor/ (Trusted Executor), alembic/, scripts/{seed,demo_agent}.py, tests/
 └─ frontend/  src/{app,components,hooks,lib,types,styles}
 ```
-Documentation: [ARCHITECTURE.md](ARCHITECTURE.md) · [API.md](API.md) · [INTERVIEW_GUIDE.md](INTERVIEW_GUIDE.md) · [CHANGELOG.md](CHANGELOG.md)
+Documentation: [ARCHITECTURE.md](ARCHITECTURE.md) · [API.md](API.md) · [CHANGELOG.md](CHANGELOG.md)
 
 ## Known limitations
 - Single approval step (no quorum or escalation chains)
@@ -173,8 +173,6 @@ Documentation: [ARCHITECTURE.md](ARCHITECTURE.md) · [API.md](API.md) · [INTERV
 - The Executor is a reference design with fake tools; a real deployment must make it the only network path (and only holder of credentials) to the real tools
 - No email invitations: admins create members with a temporary password
 - Secret redaction is pattern/key-name based, so an unlabelled arbitrary secret can slip through
-
-Full discussion in [INTERVIEW_GUIDE.md](INTERVIEW_GUIDE.md).
 
 ## License
 MIT, see [LICENSE](LICENSE).

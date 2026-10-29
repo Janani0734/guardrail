@@ -121,3 +121,30 @@ Simulate: `{agent_id, tool, environment, arguments, estimated_cost, reason?}` �
 
 ### System
 `GET /health` → `{"status":"ok","database":"ok","redis":"ok"}` (503 when degraded).
+
+## Trusted Executor API (port 8100)
+Agents authenticate with the same `X-API-Key` as GuardRail; the Executor forwards it.
+
+`POST /v1/execute` body: `{agent_id, action_id, tool, environment, arguments, estimated_cost?, reason?, wait_seconds?}`
+(`wait_seconds`: how long to wait for an admin, default 30, max 120; 0 = don't wait.)
+
+| Outcome | HTTP | Body |
+|---|---|---|
+| ALLOW, tool ran | 200 | `{executed:true, decision, action_id, tool, approved_by_human, result, replayed?}` |
+| BLOCK | 403 | `{executed:false, decision:"BLOCK", reason_code, message}` |
+| Rate limited | 429 | same, plus `Retry-After` |
+| Waiting for admin | 202 | `{executed:false, status:"PENDING_APPROVAL", approval_id}`; send the same request again |
+| Rejected / expired approval | 403 | `error.code` `APPROVAL_REJECTED` / `APPROVAL_EXPIRED` |
+| Token refused | 403 | `APPROVAL_TOKEN_INVALID` (+ `reason`) |
+| Token already handed out | 409 | `APPROVAL_TOKEN_UNAVAILABLE` (request a new approval) |
+| Same action in flight | 409 | `EXECUTION_IN_PROGRESS` |
+| Bad tool arguments | 422 | `TOOL_ARGUMENTS_INVALID` (+ field names) |
+| Tool not implemented | 501 | `TOOL_NOT_IMPLEMENTED` |
+| GuardRail / Redis down | 503 | `GUARDRAIL_UNAVAILABLE` / `EXECUTOR_STATE_UNAVAILABLE`, `executed:false` |
+
+Fake tools: `read_logs {service?, lines?}`, `send_email {to, subject?, body?}`, `delete_database_records {table, limit?}`. They return `simulated: true` sample data only.
+
+`GET /health` → `{"status":"ok"}`.
+
+### GuardRail change (backward compatible)
+`POST /v1/approvals/verify-token` additionally accepts `action_id`, and `tool` + `environment` + `arguments` (together). When given they must match what was approved, otherwise `{valid:false, reason}` with `AGENT_MISMATCH`, `ACTION_MISMATCH`, `REQUEST_MISMATCH` or `UNKNOWN_OR_EXPIRED`. `reason` appears only on refusals; `{token}` alone behaves as before.

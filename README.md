@@ -1,6 +1,6 @@
-# GuardRail - Runtime Approval Gateway for AI Agents
+# GuardRail — Runtime Approval Gateway for AI Agents
 
-[![CI](https://github.com/Janani0734/guardrail/actions/workflows/ci.yml/badge.svg)](https://github.com/Janani0734/guardrail/actions/workflows/ci.yml) ![Tests](https://img.shields.io/badge/tests-96%20backend%20%2B%2022%20frontend-brightgreen) ![Python](https://img.shields.io/badge/python-3.11%2B-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688) ![Next.js](https://img.shields.io/badge/Next.js-14-black) ![License](https://img.shields.io/badge/license-MIT-lightgrey)
+[![CI](https://github.com/Janani0734/guardrail/actions/workflows/ci.yml/badge.svg)](https://github.com/Janani0734/guardrail/actions/workflows/ci.yml) ![Tests](https://img.shields.io/badge/tests-111%20backend%20%2B%2022%20frontend-brightgreen) ![Python](https://img.shields.io/badge/python-3.11%2B-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688) ![Next.js](https://img.shields.io/badge/Next.js-14-black) ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
 ▶️ **[Watch the demo video](https://drive.google.com/file/d/1zVAl44yz5jg2VCouynGCHylcFmeQynmO/view?usp=sharing)**
 
@@ -29,6 +29,26 @@ flowchart LR
   API --> R[(Redis<br/>rate limits, repeat counters,<br/>approval tokens, cache)]
   W[Expiry worker] --> Q
 ```
+
+### Trusted Executor (enforcement)
+GuardRail *decides*; the Executor *enforces*. Agents call tools only through it:
+
+```mermaid
+flowchart LR
+  A[AI agent] -- "POST :8100/v1/execute" --> X[Executor]
+  X -- "evaluate" --> G[GuardRail]
+  G -- "ALLOW / BLOCK / REQUIRE_APPROVAL" --> X
+  X -->|ALLOW| T[Fake tool runs]
+  X -->|BLOCK| R[Refused]
+  X -->|REQUIRE_APPROVAL| H[Waits for admin]
+  H -->|approved: one-time token| X
+```
+- **ALLOW** runs the tool, **BLOCK** refuses, **REQUIRE_APPROVAL** waits for an admin (or returns 202 so the agent can retry).
+- After approval the Executor redeems a **one-time token** bound to the same agent, action, tool and arguments; it works once and expires.
+- **If GuardRail is unreachable the Executor blocks** (fail closed, HTTP 503).
+- Tools (`read_logs`, `send_email`, `delete_database_records`) are **fakes**: no real email, no real deletion.
+
+Try it: `docker compose --profile full up -d --build`, seed, then `python backend/scripts/demo_agent.py` and approve scenario 2 in the dashboard.
 
 More detail in [ARCHITECTURE.md](ARCHITECTURE.md).
 
@@ -92,12 +112,12 @@ API docs (Swagger): http://localhost:8000/docs · Health: http://localhost:8000/
 docker compose --profile full up -d --build
 docker compose exec backend python -m scripts.seed
 ```
-Dashboard http://localhost:3000, API http://localhost:8000. (Migrations run automatically when the backend container starts.)
+Dashboard http://localhost:3000, API http://localhost:8000, Executor http://localhost:8100. (Migrations run automatically when the backend container starts.)
 
 ### Tests
 ```bash
 cd backend
-pytest                      # 96 tests, hermetic: SQLite + fakeredis, ~1 min
+pytest                      # 111 tests, hermetic: SQLite + fakeredis, ~1 min
 # same suite on real PostgreSQL (the target database is dropped/recreated per test!):
 docker compose exec postgres psql -U guardrail -c "CREATE DATABASE guardrail_test"
 TEST_DATABASE_URL=postgresql+asyncpg://guardrail:guardrail@localhost:5432/guardrail_test pytest
@@ -139,10 +159,10 @@ Then open **Pending approvals** in the dashboard and approve or reject. Full ref
 ```
 GuardRail/
 ├─ docker-compose.yml
-├─ backend/   app/{core,models,schemas,repositories,services,routers,workers,utils}, alembic/, scripts/seed.py, tests/
+├─ backend/   app/{core,models,schemas,repositories,services,routers,workers,utils}, executor/ (Trusted Executor), alembic/, scripts/{seed,demo_agent}.py, tests/
 └─ frontend/  src/{app,components,hooks,lib,types,styles}
 ```
-Documentation: [ARCHITECTURE.md](ARCHITECTURE.md) · [API.md](API.md) · [CHANGELOG.md](CHANGELOG.md)
+Documentation: [ARCHITECTURE.md](ARCHITECTURE.md) · [API.md](API.md) · [INTERVIEW_GUIDE.md](INTERVIEW_GUIDE.md) · [CHANGELOG.md](CHANGELOG.md)
 
 ## Known limitations
 - Single approval step (no quorum or escalation chains)
@@ -150,9 +170,11 @@ Documentation: [ARCHITECTURE.md](ARCHITECTURE.md) · [API.md](API.md) · [CHANGE
 - Rate-limit and repeat-block counters live in Redis; if Redis loses data they reset (the gateway fails closed while Redis is down)
 - The audit hash chain makes tampering *detectable*, not impossible; anchoring the latest hash externally would harden it
 - The one-time approval token is stored only in Redis
+- The Executor is a reference design with fake tools; a real deployment must make it the only network path (and only holder of credentials) to the real tools
 - No email invitations: admins create members with a temporary password
 - Secret redaction is pattern/key-name based, so an unlabelled arbitrary secret can slip through
 
+Full discussion in [INTERVIEW_GUIDE.md](INTERVIEW_GUIDE.md).
 
 ## License
 MIT, see [LICENSE](LICENSE).

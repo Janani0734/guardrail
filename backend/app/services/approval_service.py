@@ -6,6 +6,7 @@ State machine:  PENDING --approve--> APPROVED
 All transitions are guarded by SELECT ... FOR UPDATE so two admins (or an admin and the expiry worker) can never
 both "win". Redis holds the fast-read state and one-time approval tokens; PostgreSQL is authoritative.
 """
+import hmac
 import uuid
 from datetime import datetime
 from typing import Any
@@ -17,12 +18,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.exceptions import Conflict, NotFound
 from app.core.logging import get_logger
-from app.core.security import generate_approval_token, hash_token
+from app.core.security import action_fingerprint, generate_approval_token, hash_token
 from app.models import Agent, Approval
 from app.models.base import utcnow
 from app.models.enums import ActionStatus, ActorType, ApprovalStatus
 from app.repositories.actions import ActionRepository, ApprovalRepository
-from app.schemas.actions import ActionStatusResponse, VerifyTokenResponse
+from app.schemas.actions import ActionStatusResponse, VerifyTokenRequest, VerifyTokenResponse
 from app.services.audit_service import AuditService
 from app.services.cache import bump_analytics_version
 from app.utils import redis_keys
@@ -90,9 +91,12 @@ class ApprovalService:
         try:
             if approve:
                 token = generate_approval_token()
+                # The token is bound to approval, action, agent and the keyed fingerprint of (tool, environment,
+                # raw arguments) captured at evaluation time. Fields are pipe-separated; none can contain "|".
                 await self.redis.set(
                     redis_keys.approval_token(hash_token(token)),
-                    f"{approval.id}|{action.action_id}|{action.agent_id}", ex=self.settings.approval_token_ttl_seconds,
+                    f"{approval.id}|{action.action_id}|{action.agent_id}|{action.fingerprint}",
+                    ex=self.settings.approval_token_ttl_seconds,
                 )
             await publish_state(self.redis, approval, action.action_id, token)
             await bump_analytics_version(self.redis, org_id)
@@ -173,15 +177,26 @@ class ApprovalService:
         except RedisError:
             return None
 
-    async def verify_token(self, agent: Agent, token: str) -> VerifyTokenResponse:
-        """One-time use: GETDEL makes the check-and-consume atomic, so a token can authorise exactly one execution."""
+    async def verify_token(self, agent: Agent, data: VerifyTokenRequest) -> VerifyTokenResponse:
+        """One-time use: GETDEL makes the check-and-consume atomic, so a token can authorise exactly one execution.
+
+        Any presentation consumes the token, even a mismatched one: a token that was offered for the wrong agent,
+        action, tool or arguments is burned and a fresh approval is needed. Binding checks are exact."""
         try:
-            raw = await self.redis.getdel(redis_keys.approval_token(hash_token(token)))
+            raw = await self.redis.getdel(redis_keys.approval_token(hash_token(data.token)))
         except RedisError:
-            return VerifyTokenResponse(valid=False)
+            return VerifyTokenResponse(valid=False, reason="STATE_STORE_UNAVAILABLE")
         if not raw:
-            return VerifyTokenResponse(valid=False)
-        approval_id, action_id, agent_id = raw.split("|", 2)
+            return VerifyTokenResponse(valid=False, reason="UNKNOWN_OR_EXPIRED")
+        parts = raw.split("|")
+        approval_id, action_id, agent_id = parts[0], parts[1], parts[2]
+        bound_fp = parts[3] if len(parts) > 3 else None  # tokens minted before request binding existed have none
         if agent_id != str(agent.id):
-            return VerifyTokenResponse(valid=False)
+            return VerifyTokenResponse(valid=False, reason="AGENT_MISMATCH")
+        if data.action_id is not None and data.action_id != action_id:
+            return VerifyTokenResponse(valid=False, reason="ACTION_MISMATCH")
+        if data.binds_request:
+            presented = action_fingerprint(data.tool, data.environment, data.arguments)
+            if bound_fp is None or not hmac.compare_digest(bound_fp, presented):
+                return VerifyTokenResponse(valid=False, reason="REQUEST_MISMATCH")
         return VerifyTokenResponse(valid=True, action_id=action_id, approval_id=approval_id)

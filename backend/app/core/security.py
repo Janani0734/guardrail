@@ -1,5 +1,6 @@
 import base64
 import hashlib
+import json
 import hmac
 import secrets
 import uuid
@@ -94,6 +95,14 @@ def hash_api_key(raw: str) -> str:
 def fingerprint(value: str) -> str:
     """Keyed hash used for action fingerprints, so low-entropy arguments can't be dictionary-attacked."""
     return _hmac("fp:" + value)
+
+
+def action_fingerprint(tool: str, environment: str, arguments: dict) -> str:
+    """Keyed hash of exactly what an agent asked to do (tool + environment + raw arguments).
+
+    Computed when an action is evaluated and recomputed when an approval token is redeemed, so a token can only
+    authorise the very request a human approved."""
+    return fingerprint(f"{tool}|{environment.lower()}|{json.dumps(arguments, sort_keys=True, default=str)}")
 
 
 def generate_approval_token() -> str:

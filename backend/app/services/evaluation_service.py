@@ -3,7 +3,6 @@
 Pipeline: agent binding -> idempotency -> redaction -> temp-block -> rate limit -> policy engine -> persist -> Redis side effects.
 PostgreSQL is written first and is authoritative; Redis side effects happen after commit and are best-effort.
 """
-import json
 import time
 from dataclasses import dataclass, field
 from datetime import timedelta
@@ -17,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.exceptions import Conflict, Forbidden, NotFound, ServiceUnavailable
 from app.core.logging import get_logger
-from app.core.security import fingerprint
+from app.core.security import action_fingerprint
 from app.models import ActionRequest, Agent, ApiKey, Approval, Policy, PolicyDecision, RateLimitEvent
 from app.models.base import utcnow
 from app.models.enums import ActionOutcome, ActionStatus, ActorType, AgentStatus, ApprovalStatus, Decision, PolicyType
@@ -101,7 +100,7 @@ class EvaluationService:
         org_id, agent_pk = agent.organization_id, agent.id  # plain values survive a rollback (ORM attrs get expired)
         started = time.perf_counter()
 
-        fp = fingerprint(f"{req.tool}|{req.environment}|{json.dumps(req.arguments, sort_keys=True, default=str)}")
+        fp = action_fingerprint(req.tool, req.environment, req.arguments)
         existing = await self.actions.get_by_external(org_id, agent.id, req.action_id)
         if existing:
             if existing.fingerprint != fp:

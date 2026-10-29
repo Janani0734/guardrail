@@ -23,10 +23,10 @@ async def list_approvals(
     return Page.build([ApprovalOut(**r) for r in rows], total, page, page_size)
 
 
-@router.post("/verify-token", response_model=VerifyTokenResponse, summary="Agent: consume a one-time approval token")
+@router.post("/verify-token", response_model=VerifyTokenResponse, response_model_exclude_none=True, summary="Agent: consume a one-time approval token")
 async def verify_token(data: VerifyTokenRequest, auth: AgentAuth, session: SessionDep, redis: RedisDep):
     _, agent = auth
-    return await ApprovalService(session, redis).verify_token(agent, data.token)
+    return await ApprovalService(session, redis).verify_token(agent, data)
 
 
 @router.get("/{approval_id}", response_model=ApprovalOut)

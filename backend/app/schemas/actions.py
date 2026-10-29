@@ -4,7 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.models.enums import ActionOutcome, ActionStatus, ApprovalStatus, Decision
 from app.schemas.common import ORMModel
@@ -76,13 +76,34 @@ class ActionStatusResponse(BaseModel):
 
 
 class VerifyTokenRequest(BaseModel):
+    """`token` alone keeps the original behaviour (agent-bound, one-time, expiring).
+
+    A trusted executor also sends `action_id`, `tool`, `environment` and `arguments`; the token is then valid only if
+    they are exactly what the approver saw. `tool`, `environment` and `arguments` must be sent together."""
+
     token: str = Field(min_length=8, max_length=200)
+    action_id: str | None = Field(default=None, pattern=ID_PATTERN)
+    tool: str | None = Field(default=None, pattern=ID_PATTERN)
+    environment: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_-]{1,32}$")
+    arguments: dict[str, Any] | None = None
+
+    @model_validator(mode="after")
+    def binding_is_all_or_nothing(self) -> "VerifyTokenRequest":
+        given = [self.tool is not None, self.environment is not None, self.arguments is not None]
+        if any(given) and not all(given):
+            raise ValueError("tool, environment and arguments must be provided together")
+        return self
+
+    @property
+    def binds_request(self) -> bool:
+        return self.tool is not None
 
 
 class VerifyTokenResponse(BaseModel):
     valid: bool
     action_id: str | None = None
     approval_id: str | None = None
+    reason: str | None = Field(default=None, description="Why a token was refused (only when valid is false)")
 
 
 class ActionHistoryOut(ORMModel):

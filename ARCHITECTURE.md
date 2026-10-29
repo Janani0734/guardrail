@@ -96,3 +96,24 @@ The agent polls `GET /v1/actions/{id}/status`; once approved it receives a token
 
 ## 8. Audit chain
 `entry_hash = SHA-256(canonical JSON of {seq, org, actor, event, entity, details, created_at, prev_hash})`, appended under a per-org row lock so `seq`/`prev_hash` are consistent. Tampering with or deleting any historical row breaks verification at that row. Cost: appends for one organization serialise (documented trade-off).
+
+## Trusted Executor (enforcement point)
+GuardRail only *decides*. A well-behaved agent could still skip the check, so the Executor (`backend/executor/`, port 8100) is the component that actually runs tools: the agent calls `POST /v1/execute` and never calls a tool, and never holds an approval token.
+
+```
+agent ──X-API-Key──▶ Executor ──evaluate──▶ GuardRail
+                        │  ◀── ALLOW / BLOCK / REQUIRE_APPROVAL
+                        ├─ ALLOW             → run fake tool
+                        ├─ BLOCK             → refuse (403 / 429)
+                        └─ REQUIRE_APPROVAL  → poll status until an admin decides
+                                               approved → read one-time token → verify-token (bound) → run
+```
+Order of checks: validate tool arguments (422) → evaluate → exactly-once record → decision → (approval wait, token redemption) → claim `action_id` → run → report outcome.
+
+**Token binding.** When an admin approves, GuardRail stores `approval|action|agent|fingerprint` under a hash of the token in Redis, where the fingerprint is the keyed HMAC of `tool|environment|canonical JSON arguments` captured at evaluation. `POST /v1/approvals/verify-token` accepts the optional `action_id/tool/environment/arguments`, recomputes the fingerprint and compares in constant time. Redemption is `GETDEL` (atomic), so a token works once; any presentation, even a mismatched one, burns it. TTL = `approval_token_ttl_seconds` (default 15 min). The bare `{token}` call keeps its old agent-bound behaviour for existing clients.
+
+**Fail closed.** GuardRail unreachable, timing out or answering 5xx → 503 `GUARDRAIL_UNAVAILABLE`, nothing runs. Executor's own Redis down → 503. Unknown decision → 502.
+
+**Exactly once.** `SET NX` claim on `executor:exec:{sha256(api_key)}:{action_id}` before running; the finished response is cached (24 h), so a retry returns `replayed: true` without running the tool again. A crashed run frees its claim after 2 minutes.
+
+**Trust boundary (honest).** The Executor is only a hard guarantee if it is the sole holder of real tool credentials and network access. Here the tools are fakes, so this is a reference implementation of the pattern.

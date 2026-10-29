@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.0 — Trusted Executor
+- New `executor/` service (port 8100, compose `full` profile): enforces ALLOW / BLOCK / REQUIRE_APPROVAL before a tool runs; fails closed when GuardRail is unreachable
+- Three fake tools: `read_logs`, `send_email`, `delete_database_records` (no real side effects)
+- Approval tokens are now bound to agent + action + tool + environment + arguments (`verify-token` accepts the optional fields; old `{token}` calls unchanged); one-time and expiring
+- Exactly-once execution per `action_id`
+- `backend/scripts/demo_agent.py`; 15 new tests (111 total); `httpx` moved to runtime requirements
+
 ## 1.0.0 — Initial release
 
 ### Gateway & policy engine

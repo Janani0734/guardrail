@@ -1,5 +1,5 @@
 # Default:   docker compose up -d                 -> PostgreSQL + Redis only (run backend/frontend locally)
-# Full stack: docker compose --profile full up -d --build  -> also API (auto-migrates) + dashboard
+# Full stack: docker compose --profile full up -d --build  -> also API (auto-migrates) + Trusted Executor (:8100) + dashboard
 name: guardrail
 
 services:
@@ -41,6 +41,18 @@ services:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
     ports: ["8000:8000"]
+
+  executor:
+    profiles: ["full"]
+    build: ./backend
+    command: ["uvicorn", "executor.main:app", "--host", "0.0.0.0", "--port", "8100"]
+    environment:
+      GUARDRAIL_URL: http://backend:8000
+      REDIS_URL: redis://redis:6379/1   # separate Redis database from GuardRail's own state
+    depends_on:
+      backend: { condition: service_started }
+      redis: { condition: service_healthy }
+    ports: ["8100:8100"]
 
   frontend:
     profiles: ["full"]

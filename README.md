@@ -1,6 +1,6 @@
-# GuardRail - Runtime Approval Gateway for AI Agents
+# GuardRail — Runtime Approval Gateway for AI Agents
 
-[![CI](https://github.com/Janani0734/guardrail/actions/workflows/ci.yml/badge.svg)](https://github.com/Janani0734/guardrail/actions/workflows/ci.yml) ![Tests](https://img.shields.io/badge/tests-111%20backend%20%2B%2022%20frontend-brightgreen) ![Python](https://img.shields.io/badge/python-3.11%2B-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688) ![Next.js](https://img.shields.io/badge/Next.js-14-black) ![License](https://img.shields.io/badge/license-MIT-lightgrey)
+[![CI](https://github.com/Janani0734/guardrail/actions/workflows/ci.yml/badge.svg)](https://github.com/Janani0734/guardrail/actions/workflows/ci.yml) ![Tests](https://img.shields.io/badge/tests-112%20backend%20%2B%2022%20frontend-brightgreen) ![Python](https://img.shields.io/badge/python-3.11%2B-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688) ![Next.js](https://img.shields.io/badge/Next.js-14-black) ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
 ▶️ **[Watch the demo video](https://drive.google.com/file/d/1zVAl44yz5jg2VCouynGCHylcFmeQynmO/view?usp=sharing)**
 
@@ -117,12 +117,22 @@ Dashboard http://localhost:3000, API http://localhost:8000, Executor http://loca
 ### Tests
 ```bash
 cd backend
-pytest                      # 111 tests, hermetic: SQLite + fakeredis, ~1 min
+pytest                      # 112 tests, hermetic: SQLite + fakeredis, ~1 min
 # same suite on real PostgreSQL (the target database is dropped/recreated per test!):
 docker compose exec postgres psql -U guardrail -c "CREATE DATABASE guardrail_test"
 TEST_DATABASE_URL=postgresql+asyncpg://guardrail:guardrail@localhost:5432/guardrail_test pytest
 ```
 Frontend (Vitest + React Testing Library, 22 tests): `npm test`, plus `npm run typecheck` and `npm run build`.
+
+## Performance
+Load test with [k6](https://k6.io) against `POST /v1/actions/evaluate` (an ALLOW decision, unique `action_id` per request), on a laptop with the full Docker Compose stack (PostgreSQL + Redis) and the rate-limit policy raised so it does not throttle the test. Script: [`loadtest/load-test.js`](loadtest/load-test.js).
+
+| Virtual users | Duration | Requests | Success | Throughput | Avg | P95 |
+|---|---|---|---|---|---|---|
+| 10 | 30 s | 2,834 | 100% | ~94 req/s | 105 ms | 204 ms |
+| 20 | 60 s | 4,544 | 100% | ~75 req/s | 264 ms | 605 ms |
+
+Throughput does not rise with more users because every decision appends to the hash-chained audit log, which is serialised per organisation on purpose. The first load test also exposed a PostgreSQL deadlock on that lock (the row lock conflicted with the share locks taken by foreign-key inserts); it is fixed by using `FOR NO KEY UPDATE`, with a regression test. These are single-machine, local numbers, not production figures.
 
 ## Demo credentials (local use only)
 > ⚠️ These credentials and API keys are for local development only. Never use them in production; change all secrets before deploying.
@@ -159,6 +169,7 @@ Then open **Pending approvals** in the dashboard and approve or reject. Full ref
 ```
 GuardRail/
 ├─ docker-compose.yml
+├─ loadtest/  k6 load test for the evaluate endpoint
 ├─ backend/   app/{core,models,schemas,repositories,services,routers,workers,utils}, executor/ (Trusted Executor), alembic/, scripts/{seed,demo_agent}.py, tests/
 └─ frontend/  src/{app,components,hooks,lib,types,styles}
 ```

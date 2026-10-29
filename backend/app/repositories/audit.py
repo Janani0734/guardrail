@@ -15,8 +15,14 @@ class AuditRepository:
         self.session = session
 
     async def lock_chain(self, org_id: uuid.UUID) -> None:
-        """Serialise appenders per organisation so (seq, prev_hash) is always consistent."""
-        await self.session.execute(select(Organization.id).where(Organization.id == org_id).with_for_update())
+        """Serialise appenders per organisation so (seq, prev_hash) is always consistent.
+
+        FOR NO KEY UPDATE, not FOR UPDATE: earlier statements in the same transaction insert rows that reference the
+        organisation, which takes a FOR KEY SHARE lock on it. Upgrading that to a full FOR UPDATE makes two concurrent
+        requests wait for each other's share lock (PostgreSQL deadlock). NO KEY UPDATE does not conflict with KEY SHARE
+        but still conflicts with other appenders, so the chain stays strictly serialised."""
+        stmt = select(Organization.id).where(Organization.id == org_id).with_for_update(key_share=True)
+        await self.session.execute(stmt)
 
     async def last(self, org_id: uuid.UUID) -> AuditLog | None:
         stmt = select(AuditLog).where(AuditLog.organization_id == org_id).order_by(AuditLog.seq.desc()).limit(1)
